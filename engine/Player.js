@@ -11,13 +11,17 @@ function NoOp() {
 
 export default class Player {
     static DECODERS = {
-        [ClientProt.PING]: NoOp,
+        [ClientProt.NO_TIMEOUT]: NoOp,
 
         [ClientProt.CLOSE_CONNECTION]: (player, stream) => {
             player.socket.terminate();
         },
 
-        [ClientProt.COMMAND]: (player, stream) => {
+        [ClientProt.LOGOUT]: (player, stream) => {
+            player.logout();
+        },
+
+        [ClientProt.CLIENT_CHEAT]: (player, stream) => {
             let command = stream.gstr();
             let args = command.split(' ');
             command = args.shift().toLowerCase();
@@ -86,12 +90,12 @@ export default class Player {
     }
 
     onFirstLoad() {
-        this.sendWorldInfo();
+        this.rebuildNormal();
     }
 
     regionPlayers() {
         let packet = new Packet();
-        packet.p1(ServerProt.REGION_PLAYERS);
+        packet.p1(ServerProt.PLAYER_INFO);
 
         packet.accessBits();
         packet.pBit(11, this.pos.x);
@@ -107,8 +111,8 @@ export default class Player {
 
     // ----
 
-    getElevation() {
-        return Math.floor(this.pos.y / World.elevation);
+    getHeight() {
+        return Math.floor(this.pos.y / World.distanceBetweenFloors);
     }
 
     // ---- script logic ----
@@ -174,18 +178,18 @@ export default class Player {
 
     message(str) {
         let packet = new Packet();
-        packet.p1(ServerProt.MESSAGE);
+        packet.p1(ServerProt.MESSAGE_GAME);
         packet.pstr(str);
         this.queue(packet);
     }
 
-    sendWorldInfo() {
+    rebuildNormal() {
         let packet = new Packet();
-        packet.p1(ServerProt.WORLD_INFO);
+        packet.p1(ServerProt.REBUILD_NORMAL);
         packet.p2(this.pid);
         packet.p2(World.planeWidth);
         packet.p2(World.planeHeight);
-        packet.p2(Math.floor(this.pos.y / World.distanceBetweenFloors));
+        packet.p2(this.getHeight());
         packet.p2(World.distanceBetweenFloors);
         this.queue(packet);
     }
