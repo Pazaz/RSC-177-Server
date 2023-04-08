@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+            "#engine/*": [
+                "engine/*"
+            ],
+            "#network/*": [
+                "network/*"
+            ],
+            "#util/*": [
+                "util/*"
+            ]
+        }
+    },
+    "include": [
+        "."
+    ]
+}
