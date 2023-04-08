@@ -3,6 +3,7 @@ import net from 'net';
 import Packet from './util/Packet.js';
 import { fromBase37 } from './util/Base37.js';
 import Rsc177Encryption from './util/Rsc177Encryption.js';
+import ClientProt from './util/ClientProt.js';
 
 let server = net.createServer(socket => {
     socket.setTimeout(30000);
@@ -77,7 +78,7 @@ let server = net.createServer(socket => {
                     }
                 } break;
                 case 1: {
-                    console.log('Received opcode', opcode);
+                    console.log('Received packet', ClientProt[opcode]);
                 } break;
                 case -1:
                     socket.destroy();
