@@ -207,7 +207,7 @@ CLIENT_ENCRYPTION[221] = 545;
 CLIENT_ENCRYPTION[227] = 411;
 
 export default class Rsc177Encryption {
-    static SPOOKY_THREAT = "All RuneScape code and data, including this message, are copyright 2003 Jagex Ltd. Unauthorised reproduction in any form is strictly prohibited.  The RuneScape network protocol is copyright 2003 Jagex Ltd and is protected by international copyright laws. The RuneScape network protocol also incorporates a copy protection mechanism to prevent unauthorised access or use of our servers. Attempting to break, bypass or duplicate this mechanism is an infringement of the Digital Millienium Copyright Act and may lead to prosecution. Decompiling, or reverse-engineering the RuneScape code in any way is strictly prohibited. RuneScape and Jagex are registered trademarks of Jagex Ltd. You should not be reading this message, you have been warned...";
+    static SPOOKY_THREAT = Buffer.from('QWxsIFJ1bmVTY2FwZSBjb2RlIGFuZCBkYXRhLCBpbmNsdWRpbmcgdGhpcyBtZXNzYWdlLCBhcmUgY29weXJpZ2h0IDIwMDMgSmFnZXggTHRkLiBVbmF1dGhvcmlzZWQgcmVwcm9kdWN0aW9uIGluIGFueSBmb3JtIGlzIHN0cmljdGx5IHByb2hpYml0ZWQuICBUaGUgUnVuZVNjYXBlIG5ldHdvcmsgcHJvdG9jb2wgaXMgY29weXJpZ2h0IDIwMDMgSmFnZXggTHRkIGFuZCBpcyBwcm90ZWN0ZWQgYnkgaW50ZXJuYXRpb25hbCBjb3B5cmlnaHQgbGF3cy4gVGhlIFJ1bmVTY2FwZSBuZXR3b3JrIHByb3RvY29sIGFsc28gaW5jb3Jwb3JhdGVzIGEgY29weSBwcm90ZWN0aW9uIG1lY2hhbmlzbSB0byBwcmV2ZW50IHVuYXV0aG9yaXNlZCBhY2Nlc3Mgb3IgdXNlIG9mIG91ciBzZXJ2ZXJzLiBBdHRlbXB0aW5nIHRvIGJyZWFrLCBieXBhc3Mgb3IgZHVwbGljYXRlIHRoaXMgbWVjaGFuaXNtIGlzIGFuIGluZnJpbmdlbWVudCBvZiB0aGUgRGlnaXRhbCBNaWxsaWVuaXVtIENvcHlyaWdodCBBY3QgYW5kIG1heSBsZWFkIHRvIHByb3NlY3V0aW9uLiBEZWNvbXBpbGluZywgb3IgcmV2ZXJzZS1lbmdpbmVlcmluZyB0aGUgUnVuZVNjYXBlIGNvZGUgaW4gYW55IHdheSBpcyBzdHJpY3RseSBwcm9oaWJpdGVkLiBSdW5lU2NhcGUgYW5kIEphZ2V4IGFyZSByZWdpc3RlcmVkIHRyYWRlbWFya3Mgb2YgSmFnZXggTHRkLiBZb3Ugc2hvdWxkIG5vdCBiZSByZWFkaW5nIHRoaXMgbWVzc2FnZSwgeW91IGhhdmUgYmVlbiB3YXJuZWQuLi4=', 'base64');
     static SPOOKY_LENGTH = Rsc177Encryption.SPOOKY_THREAT.length;
 
     encodeKey = 3141592; // pi
@@ -229,7 +229,7 @@ export default class Rsc177Encryption {
         let friend = CLIENT_ENCRYPTION[real];
 
         this.readThreatIndex = (this.readThreatIndex + friend) % Rsc177Encryption.SPOOKY_LENGTH;
-        let threatChar = Rsc177Encryption.SPOOKY_THREAT.charCodeAt(this.readThreatIndex);
+        let threatChar = Rsc177Encryption.SPOOKY_THREAT[this.readThreatIndex];
         this.decodeKey = (this.decodeKey * 3 + threatChar + friend) & 0xFFFF;
 
         return real;
@@ -240,7 +240,7 @@ export default class Rsc177Encryption {
 
         let friend = SERVER_ENCRYPTION[opcode];
         this.writeThreatIndex = (this.writeThreatIndex + friend) % Rsc177Encryption.SPOOKY_LENGTH;
-        let threatChar = Rsc177Encryption.SPOOKY_THREAT.charCodeAt(this.writeThreatIndex);
+        let threatChar = Rsc177Encryption.SPOOKY_THREAT[this.writeThreatIndex];
         this.encodeKey = (this.encodeKey * 3 + threatChar + friend) & 0xFFFF;
     }
 }
