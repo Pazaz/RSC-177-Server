@@ -158,7 +158,9 @@ class ReplayReader {
             }
 
             let stream = this.#server.gPacket(length);
-            stream.rotateBack();
+            if (stream.length < 160) {
+                stream.rotateBack();
+            }
 
             // the server runs a tick every 600ms
             // the client runs a tick every 20ms
@@ -197,7 +199,9 @@ class ReplayReader {
             }
 
             let stream = this.#client.gPacket(length);
-            stream.rotateBack();
+            if (stream.length < 160) {
+                stream.rotateBack();
+            }
 
             this.packets.push({
                 type: 'client',

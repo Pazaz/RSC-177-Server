@@ -25,7 +25,9 @@ class Login {
             }
 
             let stream = data.gPacket(length);
-            stream.rotateBack();
+            if (stream.length < 160) {
+                stream.rotateBack();
+            }
 
             let opcode = socket.spooky.g1(stream);
 

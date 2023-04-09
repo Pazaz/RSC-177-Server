@@ -41,6 +41,10 @@ export default class Player {
                     break;
             }
         },
+
+        [ClientProt.DEBUG_INFO]: (player, stream) => {
+            Log.warn(stream.gstr());
+        },
     };
 
     socket = null;
@@ -69,6 +73,12 @@ export default class Player {
     delay = 0;
     scriptQueue = [];
 
+    observed = {
+        players: [],
+        objects: [],
+        wallObjects: []
+    };
+
     constructor(socket, reconnecting, username, webClient) {
         this.socket = socket;
         this.reconnecting = reconnecting;
@@ -87,6 +97,8 @@ export default class Player {
         }
 
         this.regionPlayers();
+        this.regionObjects();
+        this.regionWallObjects();
     }
 
     onFirstLoad() {
@@ -107,6 +119,72 @@ export default class Player {
 
         packet.accessBytes();
         this.queue(packet);
+    }
+
+    regionObjects() {
+        let nearby = World.objects.filter(o => Math.abs(o.x - this.pos.x) < 16 && Math.abs(o.y - this.pos.y) < 16);
+
+        let added = nearby.filter(o => !this.observed.objects.includes(o));
+        let removed = this.observed.objects.filter(o => !nearby.includes(o));
+
+        if (added.length === 0 && removed.length === 0) {
+            return;
+        }
+
+        let packet = new Packet();
+        packet.p1(ServerProt.REGION_OBJECTS);
+
+        for (let i = 0; i < removed.length; i++) {
+            let object = removed[i];
+            packet.p2(0xFFFF);
+            packet.p1(object.x - this.pos.x);
+            packet.p1(object.y - this.pos.y);
+        }
+
+        for (let i = 0; i < added.length; i++) {
+            let object = added[i];
+            packet.p2(object.id);
+            packet.p1(object.x - this.pos.x);
+            packet.p1(object.y - this.pos.y);
+        }
+
+        this.queue(packet);
+
+        this.observed.objects = nearby;
+    }
+
+    regionWallObjects() {
+        let nearby = World.wallObjects.filter(o => Math.abs(o.x - this.pos.x) < 16 && Math.abs(o.y - this.pos.y) < 16);
+
+        let added = nearby.filter(o => !this.observed.wallObjects.includes(o));
+        let removed = this.observed.wallObjects.filter(o => !nearby.includes(o));
+
+        if (added.length === 0 && removed.length === 0) {
+            return;
+        }
+
+        let packet = new Packet();
+        packet.p1(ServerProt.REGION_WALL_OBJECTS);
+
+        for (let i = 0; i < removed.length; i++) {
+            let object = removed[i];
+            packet.p2(0xFFFF);
+            packet.p1(object.x - this.pos.x);
+            packet.p1(object.y - this.pos.y);
+            packet.p1(object.direction);
+        }
+
+        for (let i = 0; i < added.length; i++) {
+            let object = added[i];
+            packet.p2(object.id);
+            packet.p1(object.x - this.pos.x);
+            packet.p1(object.y - this.pos.y);
+            packet.p1(object.direction);
+        }
+
+        this.queue(packet);
+
+        this.observed.wallObjects = nearby;
     }
 
     // ----
@@ -136,7 +214,9 @@ export default class Player {
 
             let stream = new Packet(this.in.subarray(offset, offset + length));
             offset += length;
-            stream.rotateBack();
+            if (stream.length < 160) {
+                stream.rotateBack();
+            }
 
             let opcode = this.socket.spooky.g1(stream);
 
@@ -160,7 +240,8 @@ export default class Player {
     queue(stream) {
         let packet = new Packet();
         if (stream.length >= 160) {
-            packet.p2(stream.length + 160);
+            packet.p1((stream.length >> 8) + 160);
+            packet.p1(stream.length);
         } else {
             packet.p1(stream.length);
         }
@@ -168,7 +249,9 @@ export default class Player {
         // encrypt opcode
         stream.pos = 0;
         this.socket.spooky.p1(stream, stream.data[0]);
-        stream.rotate();
+        if (stream.length < 160) {
+            stream.rotate();
+        }
 
         packet.pdata(stream);
         this.outQueue.push(packet);

@@ -1,3 +1,4 @@
+import fs from 'fs';
 import Player from '#engine/Player.js';
 import Log from '#util/Log.js';
 
@@ -5,6 +6,8 @@ class World {
     STATE = 1;
 
     players = [];
+    objects = [];
+    wallObjects = [];
 
     id = 1;
     members = true;
@@ -21,6 +24,9 @@ class World {
         for (let i = 0; i < 1250; i++) {
             this.players[i] = null;
         }
+
+        this.objects = JSON.parse(fs.readFileSync('data/objects.json'));
+        this.wallObjects = JSON.parse(fs.readFileSync('data/wall-objects.json'));
 
         this.tick();
     }
