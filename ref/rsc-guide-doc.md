@@ -166,8 +166,13 @@ changeloc(location);|Changes the location to the new specified location type
 upstairs();|Moves the player up a level, and adjusts their position horizontally to account for the stairs
 downstairs();|Moves the player down a level, and adjusts their position horizontally to account for the statis
 delloc();|Removes the location from the world
-Boundary based
+
+#### Boundary based
+
 These commands may only be used when a player is interacting with a boundary
+
+|function|description|
+|-|-|
 changebound(boundary);|Changes the boundary to the new specified boundary type
 boundaryteleport();|Walks the player through the boundary to the opposite side. Useful for locked doors, and secret pasages.
 
@@ -177,7 +182,11 @@ boundaryteleport();|Walks the player through the boundary to the opposite side. 
 |-|-|
 ifnearnpc(npc);|Attempt to find a nearby npc of the type specified. Sets the condition flag to true if sucessful. If succesful the player is marked as interacting with the npc so the other npc commands can also be used.
 ifnearvisnpc(npc);|Simliar to ifnearnpc, except the npc must be within 8 squares, and there must be a line of sight between the player and npc for the command to succeed.
+
 The commands below may only be used when player is interacting with an npc
+
+|function|description|
+|-|-|
 npcsay(string);|Makes the npc say the specified string, all nearby people will also see this. The command will then automatically delay the script depending on the length of the string.
 npcbusy();|Sets the npc to busy, and stops it walking around. Not normally necessary as the system attempts to trigger this automatically.
 npcunbusy();|Sets the npc to unbusy, and allows it to walk around again. Not normally necessary as the system attempt to trigger this automatically.
