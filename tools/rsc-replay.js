@@ -1,186 +1,234 @@
+import fs from 'fs';
 import IsaacRandom from '#util/IsaacRandom.js';
 import Packet from '#util/Packet.js';
 
-function ipToStr(ip) {
-    return `${(ip >> 24) & 0xFF}.${(ip >> 16) & 0xFF}.${(ip >> 8) & 0xFF}.${ip & 0xFF}`;
+const args = process.argv.slice(2);
+
+if (args.length === 0 || !fs.existsSync(args[0]) || !fs.statSync(args[0]).isDirectory()) {
+    console.log('Usage: node rsc-replay.js <path to replay>');
+    process.exit(1);
 }
 
-const ClientProt = {
-};
+class ReplayReader {
+    // version.bin
+    #version = null;
+    version = -1;
+    clientVersion = -1;
 
-const ServerProt = {
-};
+    // metadata.bin
+    #metadata = null;
+    replayLength = -1;
+    dateModified = -1;
+    ip = '';
+    conversionSettings = -1;
+    userField = -1;
 
-let path = 'D:/rscplus-supplemental-replays/flying sno/flying sno (redacted chat) replays/06-17-2018 15.46.11';
+    // keys.bin
+    #keys = null;
+    keys = [];
+    keyIndex = -1;
 
-let version = Packet.fromFile(`${path}/version.bin`);
-let metadata = Packet.fromFile(`${path}/metadata.bin`);
-let keys = Packet.fromFile(`${path}/keys.bin`);
-let server = Packet.fromGz(`${path}/in.bin.gz`);
-let client = Packet.fromGz(`${path}/out.bin.gz`);
-server.toFile('dump/in.bin');
-client.toFile('dump/out.bin');
+    // in.bin
+    #server = null;
+    inMetadata = -1;
 
-let replay = {
-    version: version.g4(),
-    clientVersion: version.g4(),
+    // out.bin
+    #client = null;
+    outMetadata = -1;
 
-    replayLength: metadata.g4(),
-    dateModified: Number(metadata.g8()),
-    ipAddress: '',
-    ip1: metadata.g4(), // IPv6 (0 if IPv4)
-    ip2: metadata.g4(), // IPv6 (0 if IPv4)
-    ip3: metadata.g4(), // IPv6 (0xFFFF if IPv4)
-    ip4: metadata.g4(), // IPv4 or IPv6
-    conversionSettings: metadata.g1(),
-    userField: metadata.g4(),
+    #decryptor = null;
+    packets = [];
 
-    keys: [],
-    keyIndex: -1,
-    decryptor: null,
+    constructor(path) {
+        this.#version = Packet.fromFile(`${path}/version.bin`);
+        this.#metadata = Packet.fromFile(`${path}/metadata.bin`);
+        this.#keys = Packet.fromFile(`${path}/keys.bin`);
+        this.#server = Packet.fromGz(`${path}/in.bin.gz`);
+        this.#client = Packet.fromGz(`${path}/out.bin.gz`);
 
-    packets: []
-};
+        this.#server.toFile('dump/in.bin');
+        this.#client.toFile('dump/out.bin');
 
-if (replay.ip1 === 0 && replay.ip3 === 0xFFFF) {
-    replay.ipAddress = ipToStr(replay.ip4);
-    delete replay.ip1;
-    delete replay.ip2;
-    delete replay.ip3;
-    delete replay.ip4;
-}
-
-for (let i = 0; i < keys.length / 16; i++) {
-    replay.keys.push([
-        keys.g4(),
-        keys.g4(),
-        keys.g4(),
-        keys.g4()
-    ]);
-}
-
-while (server.available > 0) {
-    let timestamp = server.g4();
-    if (timestamp === 0xFFFFFFFF) {
-        // TIMESTAMP_EOF
-        break;
+        this.parse();
+        this.decrypt();
     }
 
-    let rawLength = server.g4();
-    if (rawLength === 0xFFFFFFFF) {
-        // VIRTUAL_OPCODE_CONNECT
-        replay.packets.push({
-            type: 'disconnect',
-            timestamp
-        });
-        continue;
+    toJson() {
+        return {
+            version: this.version,
+            clientVersion: this.clientVersion,
+            duration: Math.floor(this.replayLength * 20 / 1000 / 60 / 60) + 'h ' + Math.floor(this.replayLength * 20 / 1000 / 60 % 60) + 'm ' + Math.floor(this.replayLength * 20 / 1000 % 60) + 's',
+            dateModified: this.dateModified,
+            ip: this.ip,
+            conversionSettings: this.conversionSettings,
+            // userField: this.userField,
+            keys: this.keys,
+            // keyIndex: this.keyIndex,
+            // inMetadata: this.inMetadata,
+            // outMetadata: this.outMetadata,
+            packets: this.packets.map(p => ({ type: p.type, timestamp: p.timestamp, flag: p.flag, opcode: p.opcode }))
+        };
     }
 
-    if (rawLength === 1) {
-        // VIRTUAL_OPCODE_CONNECT
-        replay.packets.push({
-            type: 'connect',
-            timestamp,
-            flag: server.g1()
-        });
-        continue;
+    parse() {
+        this.parseVersion();
+        this.parseMetadata();
+        this.parseKeys();
+        this.parseServer();
+        this.parseClient();
+
+        this.packets.sort((a, b) => a.timestamp - b.timestamp);
     }
 
-    let length = server.g1();
-    if (length >= 160) {
-        server.g1(); // TODO
-        length = rawLength - 2;
-    } else {
-        length = rawLength - 1;
+    parseVersion() {
+        this.version = this.#version.g4();
+        this.clientVersion = this.#version.g4();
     }
 
-    if (length > server.available) {
-        console.log('Warning, length > available', length, server.available);
-        break;
-    }
+    parseMetadata() {
+        this.replayLength = this.#metadata.g4();
+        this.dateModified = Number(this.#metadata.g8());
 
-    let stream = server.gPacket(length);
-    stream.rotateBack();
-
-    // the server runs a tick every 600ms
-    // the client runs a tick every 20ms
-    // so if we want to convert the client tick to the server's tick, we need to multiply by 30
-
-    replay.packets.push({
-        type: 'server',
-        timestamp,
-        timestampMs: timestamp * 20,
-        timestampSeconds: (timestamp * 20) + (replay.dateModified / 1000),
-        data: stream.data
-    });
-}
-
-replay.inMetadata = server.g1();
-
-while (client.available > 0) {
-    let timestamp = client.g4();
-    if (timestamp === 0xFFFFFFFF) {
-        // TIMESTAMP_EOF
-        break;
-    }
-
-    let rawLength = client.g4();
-
-    let length = client.g1();
-    if (length >= 160) {
-        length = ((length - 160) << 8) | client.g1();
-    }
-
-    if (length > client.available) {
-        console.log('Warning, length > available', length, client.available);
-        break;
-    }
-
-    let stream = client.gPacket(length);
-    stream.rotateBack();
-
-    replay.packets.push({
-        type: 'client',
-        timestamp,
-        data: stream.data
-    });
-}
-
-replay.outMetadata = client.g1();
-
-replay.packets.sort((a, b) => a.timestamp - b.timestamp);
-
-// now read it in order so we can decrypt opcodes
-
-for (let i = 0; i < replay.packets.length; i++) {
-    let packet = replay.packets[i];
-
-    // virtual packets
-    if (packet.type === 'connect') {
-        if ((packet.flag & 64) === 64) {
-            replay.keyIndex++;
-            replay.decryptor = new IsaacRandom(replay.keys[replay.keyIndex]);
+        let ip1 = this.#metadata.g4(); // IPv6 (0)
+        let ip2 = this.#metadata.g4(); // IPv6 (0)
+        let ip3 = this.#metadata.g4(); // IPv6 (0xFFFF)
+        let ip4 = this.#metadata.g4(); // IPv4 and IPv6
+        if (ip1 === 0 && ip2 === 0) {
+            // convert to IPv4
+            this.ip = `${(ip4 >>> 24) & 0xFF}.${(ip4 >>> 16) & 0xFF}.${(ip4 >>> 8) & 0xFF}.${ip4 & 0xFF}`
+        } else {
+            // convert to IPv6
+            this.ip = `${ip1.toString(16)}:${ip2.toString(16)}:${ip3.toString(16)}:${ip4.toString(16)}`;
         }
-        continue;
-    } else if (packet.type === 'disconnect') {
-        continue;
+
+        this.conversionSettings = this.#metadata.g1();
+        this.userField = this.#metadata.g4();
     }
 
-    // decrypt
-    packet.data[0] = (packet.data[0] + replay.decryptor.nextInt()) & 0xFF;
+    parseKeys() {
+        for (let i = 0; i < this.#keys.length / 16; i++) {
+            this.keys.push([
+                this.#keys.g4(),
+                this.#keys.g4(),
+                this.#keys.g4(),
+                this.#keys.g4()
+            ]);
+        }
+    }
 
-    // make opcode human readable
-    packet.opcode = packet.data[0];
-    if (packet.type === 'server' && ServerProt[packet.opcode]) {
-        packet.opcode = ServerProt[packet.opcode];
-    } else if (packet.type === 'client' && ClientProt[packet.opcode]) {
-        packet.opcode = ClientProt[packet.opcode];
+    parseServer() {
+        while (this.#server.available > 0) {
+            let timestamp = this.#server.g4();
+            if (timestamp === 0xFFFFFFFF) {
+                // TIMESTAMP_EOF
+                break;
+            }
+
+            let rawLength = this.#server.g4();
+            if (rawLength === 0xFFFFFFFF) {
+                // VIRTUAL_OPCODE_CONNECT
+                this.packets.push({
+                    type: 'disconnect',
+                    timestamp
+                });
+                continue;
+            }
+
+            if (rawLength === 1) {
+                // VIRTUAL_OPCODE_CONNECT
+                this.packets.push({
+                    type: 'connect',
+                    timestamp,
+                    flag: this.#server.g1()
+                });
+                continue;
+            }
+
+            let length = this.#server.g1();
+            if (length >= 160) {
+                this.#server.g1(); // TODO
+                length = rawLength - 2;
+            } else {
+                length = rawLength - 1;
+            }
+
+            if (length > this.#server.available) {
+                console.log('Warning, length > available', length, this.#server.available);
+                break;
+            }
+
+            let stream = this.#server.gPacket(length);
+            stream.rotateBack();
+
+            // the server runs a tick every 600ms
+            // the client runs a tick every 20ms
+            // so if we want to convert the client tick to the server's tick, we need to multiply by 30
+
+            this.packets.push({
+                type: 'server',
+                timestamp,
+                data: stream.data
+            });
+        }
+
+        this.inMetadata = this.#server.g1();
+    }
+
+    parseClient() {
+        while (this.#client.available > 0) {
+            let timestamp = this.#client.g4();
+            if (timestamp === 0xFFFFFFFF) {
+                // TIMESTAMP_EOF
+                break;
+            }
+
+            let rawLength = this.#client.g4();
+            let length = this.#client.g1();
+            if (length >= 160) {
+                this.#client.g1(); // TODO
+                length = rawLength - 2;
+            } else {
+                length = rawLength - 1;
+            }
+
+            if (length > this.#client.available) {
+                console.log('Warning, length > available', length, this.#client.available);
+                break;
+            }
+
+            let stream = this.#client.gPacket(length);
+            stream.rotateBack();
+
+            this.packets.push({
+                type: 'client',
+                timestamp,
+                data: stream.data
+            });
+        }
+
+        this.outMetadata = this.#client.g1();
+    }
+
+    decrypt() {
+        for (let i = 0; i < this.packets.length; i++) {
+            let packet = this.packets[i];
+
+            // virtual packets
+            if (packet.type === 'connect') {
+                if ((packet.flag & 64) === 64) {
+                    this.keyIndex++;
+                    this.#decryptor = new IsaacRandom(this.keys[this.keyIndex]);
+                }
+                continue;
+            } else if (packet.type === 'disconnect') {
+                continue;
+            }
+
+            // decrypt
+            packet.opcode = (packet.data[0] + this.#decryptor.nextInt()) & 0xFF;
+        }
     }
 }
 
-delete replay.decryptor;
-
-import fs from 'fs';
-fs.writeFileSync('dump/packets.json', JSON.stringify(replay.packets.map(p => ({ type: p.type, timestamp: p.timestamp, flag: p.flag, opcode: p.opcode })), null, 2));
-
-console.log(replay);
+let reader = new ReplayReader(args[0]);
+fs.writeFileSync('dump/replay.json', JSON.stringify(reader.toJson(), null, 2));
