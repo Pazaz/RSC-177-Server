@@ -143,7 +143,11 @@ These commands all require a map coordinate to operate. The coordinate used can 
 `ifblocked();`|Sets the condition flag to true if the square indicated by the activate coordinate is currently blocked, sets false otherwise
 `teleport();`|Teleports the player to the active coordinate.
 `showeffect(type);`|Displays a special effect animation of the specified type at the active coordinate.
-Inventory based
+
+#### Inventory based
+
+|function|description|
+|-|-|
 `give(object, count);`|Gives the specified number of the specified object to players inventory
 `remove(object, count);`|Removes the specified number of the specified object from players inventory (or as many as possible)
 `ifworn(object);`|Sets condition flag to true if player is wearing specified object

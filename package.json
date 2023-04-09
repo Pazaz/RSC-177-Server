@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "start": "nodemon --ignore data --ignore dump app.js",
-    "client": "cd ref && java -cp mudclient177.2003-10-31.jar mudclient members 127.0.0.1 43594"
+    "client": "cd ref && java -cp mudclient-177.jar mudclient members 127.0.0.1 43594"
   },
   "imports": {
     "#engine/*": "./engine/*",
