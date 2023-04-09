@@ -1,5 +1,6 @@
 import fs from 'fs';
 import forge from 'node-forge';
+import zlib from 'zlib';
 
 const pub = forge.pki.publicKeyFromPem(fs.readFileSync('data/public.pem'));
 const priv = forge.pki.privateKeyFromPem(fs.readFileSync('data/private.pem'));
@@ -31,8 +32,12 @@ export default class Packet {
         return new Packet(fs.readFileSync(path));
     }
 
+    static fromGz(path) {
+        return new Packet(zlib.gunzipSync(fs.readFileSync(path)));
+    }
+
     toFile(path) {
-        fs.writeFileSync(path, this.data.slice(0, this.pos));
+        fs.writeFileSync(path, this.data);
     }
 
     toString() {
@@ -122,12 +127,12 @@ export default class Packet {
 
     // get 16-bit integer
     g2() {
-        return (this.data[this.pos++] << 8) | this.data[this.pos++];
+        return ((this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
     }
 
     // get 32-bit integer
     g4() {
-        return (this.data[this.pos++] << 24) | (this.data[this.pos++] << 16) | (this.data[this.pos++] << 8) | this.data[this.pos++];
+        return ((this.data[this.pos++] << 24) | (this.data[this.pos++] << 16) | (this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
     }
 
     // get signed 32-bit integer
