@@ -6,8 +6,8 @@ class World {
     STATE = 1;
 
     players = [];
-    objects = [];
-    wallObjects = [];
+    locs = [];
+    bounds = [];
 
     id = 1;
     members = true;
@@ -25,8 +25,8 @@ class World {
             this.players[i] = null;
         }
 
-        this.objects = JSON.parse(fs.readFileSync('data/objects.json'));
-        this.wallObjects = JSON.parse(fs.readFileSync('data/wall-objects.json'));
+        this.locs = JSON.parse(fs.readFileSync('data/map/loc.json'));
+        this.bounds = JSON.parse(fs.readFileSync('data/map/boundary.json'));
 
         this.tick();
     }

@@ -75,8 +75,8 @@ export default class Player {
 
     observed = {
         players: [],
-        objects: [],
-        wallObjects: []
+        locs: [],
+        bounds: []
     };
 
     constructor(socket, reconnecting, username, webClient) {
@@ -97,8 +97,8 @@ export default class Player {
         }
 
         this.regionPlayers();
-        this.regionObjects();
-        this.regionWallObjects();
+        this.regionLocs();
+        this.regionBounds();
     }
 
     onFirstLoad() {
@@ -121,11 +121,11 @@ export default class Player {
         this.queue(packet);
     }
 
-    regionObjects() {
-        let nearby = World.objects.filter(o => Math.abs(o.x - this.pos.x) < 16 && Math.abs(o.y - this.pos.y) < 16);
+    regionLocs() {
+        let nearby = World.locs.filter(o => Math.abs(o.x - this.pos.x) < 16 && Math.abs(o.y - this.pos.y) < 16);
 
-        let added = nearby.filter(o => !this.observed.objects.includes(o));
-        let removed = this.observed.objects.filter(o => !nearby.includes(o));
+        let added = nearby.filter(o => !this.observed.locs.includes(o));
+        let removed = this.observed.locs.filter(o => !nearby.includes(o));
 
         if (added.length === 0 && removed.length === 0) {
             return;
@@ -150,14 +150,14 @@ export default class Player {
 
         this.queue(packet);
 
-        this.observed.objects = nearby;
+        this.observed.locs = nearby;
     }
 
-    regionWallObjects() {
-        let nearby = World.wallObjects.filter(o => Math.abs(o.x - this.pos.x) < 16 && Math.abs(o.y - this.pos.y) < 16);
+    regionBounds() {
+        let nearby = World.bounds.filter(o => Math.abs(o.x - this.pos.x) < 16 && Math.abs(o.y - this.pos.y) < 16);
 
-        let added = nearby.filter(o => !this.observed.wallObjects.includes(o));
-        let removed = this.observed.wallObjects.filter(o => !nearby.includes(o));
+        let added = nearby.filter(o => !this.observed.bounds.includes(o));
+        let removed = this.observed.bounds.filter(o => !nearby.includes(o));
 
         if (added.length === 0 && removed.length === 0) {
             return;
@@ -184,7 +184,7 @@ export default class Player {
 
         this.queue(packet);
 
-        this.observed.wallObjects = nearby;
+        this.observed.bounds = nearby;
     }
 
     // ----
