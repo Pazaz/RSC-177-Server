@@ -33,7 +33,7 @@ spellself, spellground, label
 ### Subject and object
 
 The subject is used in conjunction with the trigger to determine when the script is run.  
-e.g. `takeobj, axe` - would be triggered if the player took the axe.
+e.g. `takeobj,axe` - would be triggered if the player took the axe.
 
 The `skill`, and `use` commands use both a subject and object  
 e.g. `useobj,cow,bucket` - would trigger if you use the bucket with the cow.  
@@ -53,8 +53,10 @@ If the flag is false, then lines starting with a `*` or `-` will be executed
 ### Runescape script command summary
 
 Notes:  
-One server cycle is 0.6 seconds, so 100 cycles = 1 minute  
+One server cycle is *0.6 seconds**, so 100 cycles = 1 minute  
 Probabilities range from 0=impossible to 256=certain  
+
+**editors note: while designed to be 0.6s, in practice it appeared to be closer to 640ms*
 
 #### Misc commands
 
