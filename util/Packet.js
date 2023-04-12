@@ -130,6 +130,11 @@ export default class Packet {
         return ((this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
     }
 
+    // get 24-bit integer
+    g3() {
+        return ((this.data[this.pos++] << 16) | (this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
+    }
+
     // get 32-bit integer
     g4() {
         return ((this.data[this.pos++] << 24) | (this.data[this.pos++] << 16) | (this.data[this.pos++] << 8) | this.data[this.pos++]) >>> 0;
@@ -161,6 +166,18 @@ export default class Packet {
 
     gstr() {
         return Buffer.from(this.gdata(this.available)).toString();
+    }
+
+    gjstr() {
+        let str = '';
+        while (this.available > 0) {
+            let c = this.g1();
+            if (c == 0) {
+                break;
+            }
+            str += String.fromCharCode(c);
+        }
+        return str;
     }
 
     // ----
