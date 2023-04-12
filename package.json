@@ -7,6 +7,7 @@
     "client": "cd ref && java -cp mudclient-177.jar mudclient members 127.0.0.1 43594"
   },
   "imports": {
+    "#cache/*": "./cache/*",
     "#engine/*": "./engine/*",
     "#network/*": "./network/*",
     "#util/*": "./util/*"

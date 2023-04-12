@@ -145,6 +145,14 @@ export default class Packet {
         return this.data[this.pos++] << 24 | this.data[this.pos++] << 16 | this.data[this.pos++] << 8 | this.data[this.pos++];
     }
 
+    g4max() {
+        let value = this.g4();
+        if (value > 99999999) {
+            value = 99999999 - value;
+        }
+        return value;
+    }
+
     // get 64-bit integer
     g8() {
         let high = BigInt(this.g4());
